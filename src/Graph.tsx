@@ -17,6 +17,9 @@ interface IProps {
 interface PerspectiveViewerElement {
   load: (table: Table) => void,
 }
+interface PerspectiveViewerElement extends HTMLElement {
+    load: (table: any) => void;
+}
 
 /**
  * React component that renders Perspective based on data
@@ -30,16 +33,29 @@ class Graph extends Component<IProps, {}> {
     return React.createElement('perspective-viewer');
   }
 
-  componentDidMount() {
-    // Get element to attach the table from the DOM.
-    const elem: PerspectiveViewerElement = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
-
+componentDidMount() {
+    const elem = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
     const schema = {
-      stock: 'string',
-      top_ask_price: 'float',
-      top_bid_price: 'float',
-      timestamp: 'date',
+        stock: 'string',
+        top_ask_price: 'float',
+        timestamp: 'date'
     };
+    if (window.perspective && window.perspective.worker) {
+        const worker = window.perspective.worker();
+        const table = worker.table(schema);
+        elem.load(table);
+        elem.setAttribute('view', 'y_line');
+        elem.setAttribute('column-pivots', '["stock"]');
+        elem.setAttribute('row-pivots', '["timestamp"]');
+        elem.setAttribute('columns', '["top_ask_price"]');
+        elem.setAttribute('aggregates', JSON.stringify({
+            stock: 'distinct count',
+            top_ask_price: 'avg',
+            timestamp: 'distinct count'
+        }));
+    }
+}
+
 
     if (window.perspective && window.perspective.worker()) {
       this.table = window.perspective.worker().table(schema);
