@@ -7,41 +7,57 @@ import './App.css';
  * State declaration for <App />
  */
 interface IState {
-  data: ServerRespond[],
+    data: any[],
+    showGraph: boolean
 }
+
 
 /**
  * The parent element of the react app.
  * It renders title, button and Graph react element.
  */
 class App extends Component<{}, IState> {
-  constructor(props: {}) {
+constructor(props: IProps) {
     super(props);
-
     this.state = {
-      // data saves the server responds.
-      // We use this state to parse data down to the child element (Graph) as element property
-      data: [],
+        data: [],
+        showGraph: false
     };
-  }
+}
 
   /**
    * Render Graph react component with state.data parse as property data
    */
-  renderGraph() {
-    return (<Graph data={this.state.data}/>)
-  }
+renderGraph() {
+    if (this.state.showGraph) {
+        return (<Graph data={this.state.data} />);
+    }
+    return null;
+}
+
 
   /**
    * Get new data from server and update the state with the new data
    */
-  getDataFromServer() {
-    DataStreamer.getData((serverResponds: ServerRespond[]) => {
-      // Update the state by creating a new array of data that consists of
-      // Previous data in the state and the new data from server
-      this.setState({ data: [...this.state.data, ...serverResponds] });
-    });
-  }
+getDataFromServer() {
+    const ws = new WebSocket("ws://localhost:8080");
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        this.setState((prevState) => ({
+            data: [...prevState.data, ...data].filter((item, index, self) =>
+                index === self.findIndex((t) => (
+                    t.stock === item.stock && t.timestamp === item.timestamp
+                ))
+            ),
+            showGraph: true
+        }));
+    };
+
+    setInterval(() => {
+        ws.send('get_data');
+    }, 1000);
+}
+
 
   /**
    * Render the App react component
